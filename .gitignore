@@ -1,0 +1,7 @@
+
+# Cache.
+compile_commands.json
+
+# Build artifacts.
+l.kafo.dev
+build/

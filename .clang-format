@@ -1,0 +1,27 @@
+BasedOnStyle: LLVM
+Language: Cpp
+
+UseTab: ForIndentation
+IndentWidth: 8
+TabWidth: 8
+ColumnLimit: 80
+
+BraceWrapping:
+  AfterFunction: false
+InsertBraces: true
+
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+ReflowComments: true
+SpacesBeforeTrailingComments: 2
