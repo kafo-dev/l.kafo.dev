@@ -4,7 +4,7 @@ Language: Cpp
 UseTab: ForIndentation
 IndentWidth: 8
 TabWidth: 8
-ColumnLimit: 80
+ColumnLimit: 78
 
 BraceWrapping:
   AfterFunction: false
