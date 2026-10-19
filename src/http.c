@@ -32,7 +32,7 @@ enum http_error http_parse_request(const char *data, size_t data_len,
 	}
 
 	data = method_space + 1;
-	data_len -= method_len;
+	data_len -= method_len + 1;
 
 	const char *path_space =
 	    memchr(data, ' ', maths_min(HTTP_MAX_PATH_LEN, data_len));

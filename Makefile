@@ -1,6 +1,9 @@
 
+export L_KAFO_DEV_ADDR := localhost
+export L_KAFO_DEV_PORT := 7561
+
 CC := clang
-CSTD := -std=c23
+CSTD := -std=c23 -D_POSIX_C_SOURCE=202405L
 WARN := -Wall -Wextra -Wpedantic -Werror
 SAN := -fsanitize=address,undefined
 
@@ -25,6 +28,7 @@ BIN := l.kafo.dev
 all: $(BIN)
 
 run: $(BIN)
+	@echo "$(L_KAFO_DEV_ADDR):$(L_KAFO_DEV_PORT)"
 	./$(BIN)
 
 $(BIN): $(OBJS)

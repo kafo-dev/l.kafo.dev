@@ -1,4 +1,5 @@
 #include "http.h"
+#include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,30 +7,70 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define ENV_PREFIX "L_KAFO_DEV_"
+#define ENV_ADDR ENV_PREFIX "ADDR"
+#define ENV_PORT ENV_PREFIX "PORT"
+
 enum { BUFFER_SIZE = 1024 * 16 };
 
 int main(void) {
-	int server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	char *server_addr = getenv(ENV_ADDR);
+	if (server_addr == nullptr || *server_addr == 0) {
+		fprintf(stderr, "%s is unset or empty\n", ENV_ADDR);
+		return EXIT_FAILURE;
+	}
+
+	char *server_port = getenv(ENV_PORT);
+	if (server_port == nullptr || *server_port == 0) {
+		fprintf(stderr, "%s is unset or empty\n", ENV_PORT);
+		return EXIT_FAILURE;
+	}
+
+	struct addrinfo addr_hints = {0};
+	addr_hints.ai_family = AF_UNSPEC;
+	addr_hints.ai_socktype = SOCK_STREAM;
+	struct addrinfo *addr_result;
+	int err =
+	    getaddrinfo(server_addr, server_port, &addr_hints, &addr_result);
+	if (err != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
+		return EXIT_FAILURE;
+	}
+
+	int server_sockfd = -1;
+	for (struct addrinfo *info = addr_result; info != nullptr;
+	     info = info->ai_next) {
+		server_sockfd = socket(info->ai_family, info->ai_socktype,
+		                       info->ai_protocol);
+		if (server_sockfd == -1) {
+			server_sockfd = -1;
+			continue;
+		}
+
+		int server_socket_reuse = 1;
+		if (setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR,
+		               &server_socket_reuse,
+		               sizeof(server_socket_reuse)) == -1) {
+			close(server_sockfd);
+			server_sockfd = -1;
+			continue;
+		}
+
+		if (bind(server_sockfd, info->ai_addr, info->ai_addrlen) ==
+		    -1) {
+			close(server_sockfd);
+			server_sockfd = -1;
+			continue;
+		}
+
+		break;
+	}
+
+	freeaddrinfo(addr_result);
+
 	if (server_sockfd == -1) {
-		perror("socket");
-		return EXIT_FAILURE;
-	}
-
-	int server_socket_reuse = 1;
-	if (setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR,
-	               &server_socket_reuse,
-	               sizeof(server_socket_reuse)) == -1) {
-		perror("setsockopt(SO_REUSEADDR)");
-		return EXIT_FAILURE;
-	}
-
-	struct sockaddr_in server_addr = {
-	    .sin_family = AF_INET,
-	    .sin_port = htons(9090),
-	    .sin_addr = {.s_addr = htonl(INADDR_ANY)}};
-	if (bind(server_sockfd, (struct sockaddr *)(&server_addr),
-	         sizeof(server_addr)) == -1) {
-		perror("bind");
+		fprintf(stderr, "could not bind to %s:%s\n", server_addr,
+		        server_port);
 		return EXIT_FAILURE;
 	}
 
@@ -38,9 +79,11 @@ int main(void) {
 		return EXIT_FAILURE;
 	}
 
-	struct sockaddr_in client_addr;
-	socklen_t client_addr_len = sizeof(client_addr);
+	struct sockaddr_storage client_addr;
+	socklen_t client_addr_len;
 	for (;;) {
+		client_addr_len = sizeof(client_addr);
+
 		int client_sockfd =
 		    accept(server_sockfd, (struct sockaddr *)(&client_addr),
 		           &client_addr_len);
@@ -62,7 +105,7 @@ int main(void) {
 		    http_parse_request(buffer, request_len, &request);
 		if (http_err != HTTP_ERROR_NONE) {
 			fprintf(stderr,
-			        "Error(%d): Unknown error parsing request.\n",
+			        "error(%d): Unknown error parsing request.\n",
 			        http_err);
 			goto inform_error;
 		}
@@ -81,7 +124,7 @@ int main(void) {
 		             content_len, CONTENT_PREFIX, request.path);
 		if (response_len > BUFFER_SIZE - 1) {
 			fprintf(stderr,
-			        "Error: Response too large ('%d' bytes).\n",
+			        "error: Response too large ('%d' bytes).\n",
 			        response_len);
 			goto inform_error;
 		}
@@ -103,6 +146,8 @@ int main(void) {
 	cleanup:
 		close(client_sockfd);
 	}
+
+	close(server_sockfd);
 
 	return EXIT_SUCCESS;
 }
