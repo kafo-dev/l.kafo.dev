@@ -1,0 +1,16 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: native
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: make
+      - run: |
+          install -D -m 0755 l.kafo.dev \
+            /var/lib/gitea-runner/l.kafo.dev/bin/l.kafo.dev.new
+          mv /var/lib/gitea-runner/l.kafo.dev/bin/l.kafo.dev.new \
+             /var/lib/gitea-runner/l.kafo.dev/bin/l.kafo.dev
+      - run: sudo /run/current-system/sw/bin/systemctl restart l-kafo-dev.service
